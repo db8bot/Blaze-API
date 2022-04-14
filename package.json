@@ -1,0 +1,25 @@
+{
+  "name": "db8bot_scihub_api",
+  "version": "1.0.0",
+  "description": "bridging api for db8bot to scihub on an ephemeral IP",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AirFusion45/db8bot_scihub_API.git"
+  },
+  "author": "AirFusion45",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/AirFusion45/db8bot_scihub_API/issues"
+  },
+  "homepage": "https://github.com/AirFusion45/db8bot_scihub_API#readme",
+  "dependencies": {
+    "axios": "^0.26.1",
+    "express": "^4.17.3",
+    "qs": "^6.10.3"
+  }
+}
