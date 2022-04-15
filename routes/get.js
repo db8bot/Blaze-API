@@ -2,15 +2,13 @@ const express = require('express')
 const qs = require('qs')
 const router = express.Router()
 const axios = require('axios').default
+const cheerio = require('cheerio')
 
 router.post('/paper', (req, resApp) => {
-    // console.log(req.body)
-
     axios({
         method: 'POST',
         url: 'https://sci-hub.se/',
-        // url: 'https://sci-hub.ru/', // dev testing
-        data: qs.stringify({'request': `${req.body.query}`}),
+        data: qs.stringify({ 'request': `${req.body.query}` }),
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
             'Cache-Control': 'no-cache',
@@ -26,9 +24,6 @@ router.post('/paper', (req, resApp) => {
         .then((res) => {
             let matching = (res.data.match(/src="(.*?)" id = "pdf"/)[1].trim().replace('//', 'https://').replace('"', '')).includes('sci-hub') ? res.data.match(/src="(.*?)" id = "pdf"/)[1].trim().replace('//', 'https://').replace('"', '') : `https://sci-hub.se${res.data.match(/src="(.*?)" id = "pdf"/)[1].trim().replace('//', 'https://').replace('"', '')}`
             resApp.send(matching)
-            // console.log(res.status)
-            // console.log(res.headers)
-            // console.log(res.statusText)
         })
         .catch((err) => {
             console.error(err)
@@ -37,10 +32,68 @@ router.post('/paper', (req, resApp) => {
 
 
 router.post('/book', (req, resApp) => {
-    resApp.send('200 ok')
+    console.log(req.body.params)
+
+    async function getIPFSPortal(libgenLolLink) {
+        return new Promise((resolve, reject) => {
+            axios({
+                method: "GET",
+                url: libgenLolLink
+            }).then((res) => {
+                var $ = cheerio.load(res.data)
+                if (res.data.includes('Download from an IPFS distributed storage, choose any gateway:')) { // there are ipfs buttons
+                    resolve($($($($('#download').children('ul')[0]).children('li')[0]).children('a')[0]).attr('href'))
+                } else { // fall back on the slower get link
+                    resolve($($('#download').children('h2').children('a')[0]).attr('href'))
+                }
+            }).catch((err) => {
+                console.error(err)
+            })
+        })
+    }
+
+    if (req.body.params === 'fiction') {
+        axios({
+            method: "GET",
+            url: `https://libgen.is/fiction/?q=${encodeURIComponent(req.body.query)}`,
+        }).then(async (res) => {
+
+            var $ = cheerio.load(res.data)
+            var libgenLolLink = $($($($($('.catalog tbody').children('tr')[0]).children('td')[5]).children('ul').children('li')[0]).children('a')[0]).attr('href') // lol link of the first mirror of the first entry
+            if (libgenLolLink === undefined) {
+                resApp.status(404)
+                resApp.send('Not Found')
+                return
+            }
+            let ipfsPortalLink = await getIPFSPortal(libgenLolLink)
+            resApp.send([ipfsPortalLink, `https://libgen.is/fiction/?q=${encodeURIComponent(req.body.query)}`])
+
+        }).catch((err) => {
+            console.error(err)
+        })
+    } else if (req.body.params === 'nonfiction') {
+        axios({
+            method: "GET",
+            url: `https://libgen.is/search.php?req=${encodeURIComponent(req.body.query)}&lg_topic=libgen&open=0&view=simple&res=25&phrase=1&column=def`,
+        }).then(async (res) => {
+            var $ = cheerio.load(res.data)
+            var libgenLolLink = $($($($($('table').children()[2]).children('tr')[1]).children('td')[9]).children('a')[0]).attr('href')
+            if (libgenLolLink === undefined) {
+                resApp.status(404)
+                resApp.send('Not Found')
+                return
+            }
+            let ipfsPortalLink = await getIPFSPortal(libgenLolLink)
+            resApp.send([ipfsPortalLink, `https://libgen.is/search.php?req=${encodeURIComponent(req.body.query)}&lg_topic=libgen&open=0&view=simple&res=25&phrase=1&column=def`])
+
+        }).catch((err) => {
+            console.error(err)
+        })
+    }
 })
+
 router.post('/media', (req, resApp) => {
-    resApp.send('200 ok')
+    resApp.sendStatus(501)
 })
 
 module.exports = router

@@ -19,6 +19,7 @@
   "homepage": "https://github.com/AirFusion45/db8bot_scihub_API#readme",
   "dependencies": {
     "axios": "^0.26.1",
+    "cheerio": "^1.0.0-rc.10",
     "express": "^4.17.3",
     "qs": "^6.10.3"
   }
