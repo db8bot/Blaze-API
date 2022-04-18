@@ -3,8 +3,23 @@ const qs = require('qs')
 const router = express.Router()
 const axios = require('axios').default
 const cheerio = require('cheerio')
+const redis = require('redis')
+var cache;
+(async () => {
+    cache = redis.createClient({
+        url: process.env.URL,
+        password: process.env.PASSWORD
+    })
+    await cache.connect()
+    console.log('redis connected')
+})();
 
-router.post('/paper', (req, resApp) => {
+
+router.post('/paper', async (req, resApp) => {
+    if (await cache.exists(req.body.query)) {
+        resApp.send(await cache.get(req.body.query))
+        return
+    }
     axios({
         method: 'POST',
         url: 'https://sci-hub.se/',
@@ -21,9 +36,12 @@ router.post('/paper', (req, resApp) => {
             'Origin': 'https://sci-hub.se'
         }
     })
-        .then((res) => {
+        .then(async (res) => {
             let matching = (res.data.match(/src="(.*?)" id = "pdf"/)[1].trim().replace('//', 'https://').replace('"', '')).includes('sci-hub') ? res.data.match(/src="(.*?)" id = "pdf"/)[1].trim().replace('//', 'https://').replace('"', '') : `https://sci-hub.se${res.data.match(/src="(.*?)" id = "pdf"/)[1].trim().replace('//', 'https://').replace('"', '')}`
             resApp.send(matching)
+            await cache.set(req.body.query, matching, {
+                EX: 1800
+            })
         })
         .catch((err) => {
             console.error(err)
@@ -31,8 +49,12 @@ router.post('/paper', (req, resApp) => {
 })
 
 
-router.post('/book', (req, resApp) => {
-    console.log(req.body.params)
+router.post('/book', async (req, resApp) => {
+
+    if (await cache.exists(req.body.query + req.body.params)) {
+        resApp.send(JSON.parse(await cache.get(req.body.query + req.body.params)))
+        return
+    }
 
     async function getIPFSPortal(libgenLolLink) {
         return new Promise((resolve, reject) => {
@@ -67,7 +89,9 @@ router.post('/book', (req, resApp) => {
             }
             let ipfsPortalLink = await getIPFSPortal(libgenLolLink)
             resApp.send([ipfsPortalLink, `https://libgen.is/fiction/?q=${encodeURIComponent(req.body.query)}`])
-
+            await cache.set(req.body.query + req.body.params, JSON.stringify([ipfsPortalLink, `https://libgen.is/fiction/?q=${encodeURIComponent(req.body.query)}`]), {
+                EX: 1800
+            })
         }).catch((err) => {
             console.error(err)
         })
@@ -85,7 +109,9 @@ router.post('/book', (req, resApp) => {
             }
             let ipfsPortalLink = await getIPFSPortal(libgenLolLink)
             resApp.send([ipfsPortalLink, `https://libgen.is/search.php?req=${encodeURIComponent(req.body.query)}&lg_topic=libgen&open=0&view=simple&res=25&phrase=1&column=def`])
-
+            await cache.set(req.body.query + req.body.params, JSON.stringify([ipfsPortalLink, `https://libgen.is/search.php?req=${encodeURIComponent(req.body.query)}&lg_topic=libgen&open=0&view=simple&res=25&phrase=1&column=def`]), {
+                EX: 1800
+            })
         }).catch((err) => {
             console.error(err)
         })
