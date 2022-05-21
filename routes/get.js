@@ -74,7 +74,9 @@ router.post('/paper', async (req, resApp) => {
                 }
                 resApp.send([matching, metadata])
                 if (VERSION === 'prod') {
-                    await cache.set(req.body.query, [matching, metadata], {
+                    let cacheObj = [matching]
+                    cacheObj.push(metadata)
+                    await cache.set(req.body.query, JSON.stringify(cacheObj), {
                         EX: 1800
                     })
                 }
@@ -136,7 +138,9 @@ router.post('/book', async (req, resApp) => {
             }
             resApp.send([ipfsPortalLink, `https://libgen.is/fiction/?q=${encodeURIComponent(req.body.query)}`, meta])
             if (VERSION === 'prod') {
-                await cache.set(req.body.query + req.body.params, JSON.stringify([ipfsPortalLink, `https://libgen.is/fiction/?q=${encodeURIComponent(req.body.query)}`, meta]), {
+                let cacheObj = [ipfsPortalLink, `https://libgen.is/fiction/?q=${encodeURIComponent(req.body.query)}`]
+                cacheObj.push(meta)
+                await cache.set(req.body.query + req.body.params, JSON.stringify(cacheObj), {
                     EX: 1800
                 })
             }
@@ -179,7 +183,9 @@ router.post('/book', async (req, resApp) => {
             meta.title = meta.title.replace(/,\s*$/g, '').trim()
             resApp.send([ipfsPortalLink, `https://libgen.is/search.php?req=${encodeURIComponent(req.body.query)}&lg_topic=libgen&open=0&view=simple&res=25&phrase=1&column=def`, meta])
             if (VERSION === 'prod') {
-                await cache.set(req.body.query + req.body.params, JSON.stringify([ipfsPortalLink, `https://libgen.is/search.php?req=${encodeURIComponent(req.body.query)}&lg_topic=libgen&open=0&view=simple&res=25&phrase=1&column=def`, meta]), {
+                let cacheObj = [ipfsPortalLink, `https://libgen.is/search.php?req=${encodeURIComponent(req.body.query)}&lg_topic=libgen&open=0&view=simple&res=25&phrase=1&column=def`]
+                cacheObj.push(meta)
+                await cache.set(req.body.query + req.body.params, JSON.stringify(cacheObj), {
                     EX: 1800
                 })
             }
