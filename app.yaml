@@ -3,8 +3,9 @@ instance_class: F1
 env: standard
 service: default
 automatic_scaling:
+  min_instances: 1
   max_instances: 5
-  target_cpu_utilization: 0.95
+  target_cpu_utilization: 0.70
   max_concurrent_requests: 3
-  max_pending_latency: automatic
-  min_pending_latency: 100ms
+  max_pending_latency: 100ms
+  min_pending_latency: 50ms

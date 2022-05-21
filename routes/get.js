@@ -4,7 +4,7 @@ const router = express.Router()
 const axios = require('axios').default
 const cheerio = require('cheerio')
 const redis = require('redis')
-const VERSION = 'dev'
+const VERSION = 'prod'
 if (VERSION === 'prod') {
     var cache;
     (async () => {
@@ -26,36 +26,67 @@ router.post('/paper', async (req, resApp) => {
         }
     }
     let jstor = req.body.query.includes('jstor.org/stable')
+    let jstorHeaders = {
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36',
+    }
+    let normalHeaders = {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Cache-Control': 'no-cache',
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
+        'Host': `sci-hub.se`,
+        'Referer': `https://sci-hub.se/`,
+        'Origin': `https://sci-hub.se`
+    }
     axios({
-        method: 'POST',
-        url: `https://sci-hub.${jstor ? 'st' : 'se'}/`,
-        data: qs.stringify({ 'request': `${req.body.query}` }),
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'Cache-Control': 'no-cache',
-            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'Connection': 'keep-alive',
-            'Host': `sci-hub.${jstor ? 'st' : 'se'}`,
-            'Referer': `https://sci-hub.${jstor ? 'st' : 'se'}/`,
-            'Origin': `https://sci-hub.se${jstor ? 'st' : 'se'}`
+        method: jstor ? 'GET' : 'POST',
+        url: `https://sci-hub.${jstor ? `mksa.top/${req.body.query}` : 'se'}`, // actual sci-hub.st has prob blacklisted the google ip - it is redirecting to the homepage (works with repl.it's vms... so we are using an unofficial fork for now - this might break but since it is for jstor only the impact shouldn't be massive)
+        data: qs.stringify({ 'request': `${jstor ? "" : req.body.query}` }),
+        headers: jstor ? jstorHeaders : normalHeaders
+    }).then(async (res) => {
+        let $ = cheerio.load(res.data)
+        var matching;
+        try {
+            matching = $($('#article').children('embed')[0]).attr('src') || $($('#article').children('iframe')[0]).attr('src')
+            if (!matching.includes('https://') && matching.includes('http://')) matching = matching.replace('http://', 'https://')
+            if (!matching.includes('https://') && !matching.includes('http://') && matching.includes('//')) matching = matching.replace('//', 'https://')
+        } catch (e) {
+            resApp.sendStatus(404)
+            return
+        }
+        if (matching !== undefined && matching !== null) {
+            axios({
+                method: 'GET',
+                url: `https://www.mybib.com/api/autocite/search?q=${req.body.query}&sourceId=${req.body.query.match(/[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)?/gi) ? 'webpage' : 'article_journal'}`, // shhhhh ;)
+                headers: {}
+            }).then(async (res) => {
+                let metadata = {  // take the first result & mark it as probably correct results[0]
+                    title: res.data.results[0].metadata.title,
+                    containerTitle: res.data.results[0].metadata.containerTitle,
+                    doi: res.data.results[0].metadata.doi,
+                    issue: res.data.results[0].metadata.issue,
+                    issuedYear: res.data.results[0].metadata.issued.year,
+                    issuedMonth: res.data.results[0].metadata.issued.month,
+                    volume: res.data.results[0].metadata.volume,
+                    authors: res.data.results[0].metadata.author
+                }
+                resApp.send([matching, metadata])
+                if (VERSION === 'prod') {
+                    await cache.set(req.body.query, [matching, metadata], {
+                        EX: 1800
+                    })
+                }
+            })
+        } else {
+            resApp.sendStatus(404)
         }
     })
-        .then(async (res) => {
-            let matching = (res.data.match(/src="(.*?)" id = "pdf"/)[1].trim().replace('//', 'https://').replace('"', '')).includes('sci-hub') ? res.data.match(/src="(.*?)" id = "pdf"/)[1].trim().replace('//', 'https://').replace('"', '') : `https://sci-hub.${jstor ? 'st' : 'se'}${res.data.match(/src="(.*?)" id = "pdf"/)[1].trim().replace('//', 'https://').replace('"', '')}`
-            resApp.send(matching)
-            if (VERSION === 'prod') {
-                await cache.set(req.body.query, matching, {
-                    EX: 1800
-                })
-            }
-        })
         .catch((err) => {
             console.error(err)
         })
 })
-
 
 router.post('/book', async (req, resApp) => {
 
