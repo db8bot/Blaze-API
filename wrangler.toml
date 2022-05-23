@@ -1,0 +1,8 @@
+name = "worker-typescript-template"
+type = "javascript"
+account_id = ""
+main = "./src/index.ts"
+workers_dev = true
+
+[build]
+command = "npm install && npm run build"
