@@ -74,6 +74,7 @@ app.post('/paper', async (c) => {
     headers: jstor ? jstorHeaders : normalHeaders
   };
   console.log(init)
+  console.log(`https://sci-hub.${jstor ? `mksa.top/${parsed.query}` : 'se'}`)
   const response = await fetch(`https://sci-hub.${jstor ? `mksa.top/${parsed.query}` : 'se'}`, init)  // actual sci-hub.st has prob blacklisted the google ip - it is redirecting to the homepage (works with repl.it's vms... so we are using an unofficial fork for now - this might break but since it is for jstor only the impact shouldn't be massive)
   const results = await response.text()
   console.log(results)
