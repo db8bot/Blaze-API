@@ -59,8 +59,11 @@ app.post('/paper', async (c) => {
   let normalHeaders = {
     'Content-Type': 'application/x-www-form-urlencoded',
     'Cache-Control': 'no-cache',
+    // 'User-Agent': 'PostmanRuntime/7.29.0',
     'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36',
+    // 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 11_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1',
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+    // 'Accept': '*/*',
     'Accept-Encoding': 'gzip, deflate, br',
     'Connection': 'keep-alive',
     'Host': `sci-hub.se`,
@@ -73,9 +76,16 @@ app.post('/paper', async (c) => {
     method: jstor ? 'GET' : 'POST',
     headers: jstor ? jstorHeaders : normalHeaders
   };
+  // const init = {
+  // body: qs.stringify({ 'request': `${jstor ? "" : parsed.query}` }),
+  // method: 'GET',
+  // headers: normalHeaders
+  // };
   console.log(init)
   console.log(`https://sci-hub.${jstor ? `mksa.top/${parsed.query}` : 'se'}`)
   const response = await fetch(`https://sci-hub.${jstor ? `mksa.top/${parsed.query}` : 'se'}`, init)  // actual sci-hub.st has prob blacklisted the google ip - it is redirecting to the homepage (works with repl.it's vms... so we are using an unofficial fork for now - this might break but since it is for jstor only the impact shouldn't be massive)
+  // const response = await fetch(`https://sci-hub.se`, init)
+  // const response = await fetch(`https://sci-hub.se/`, init)
   const results = await response.text()
   console.log(results)
   let $ = cheerio.load(results)
@@ -84,7 +94,8 @@ app.post('/paper', async (c) => {
     matching = $($('#article').children('embed')[0]).attr('src') || $($('#article').children('iframe')[0]).attr('src')
     if (!matching.includes('https://') && matching.includes('http://')) matching = matching.replace('http://', 'https://')
     if (!matching.includes('https://') && !matching.includes('http://') && matching.includes('//')) matching = matching.replace('//', 'https://')
-    return (c.json({ message: match, ok: false }, 200))
+    console.log(matching)
+    return (c.json({ message: matching, ok: true }, 200))
   } catch (e) {
     // resApp.sendStatus(404)
     return (c.json({ message: 'Not Found', ok: false }, 404))
