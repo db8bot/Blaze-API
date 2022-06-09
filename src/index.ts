@@ -3,7 +3,7 @@ CLOUDFLARE WORKERS
 
 db8bot (https://github.com/AirFusion45/db8bot) service API for /get series commands. 
 Processing JSTOR links directed to sci-hub (mirror), journal metadata & library genesis requests
-Copyright (c) Jim Fang
+Copyright (c) Jim Fang, db8bot
 MIT license
 Part of the db8bot application
 
