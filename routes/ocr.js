@@ -34,6 +34,8 @@ router.post('/', async (req, resApp) => {
     } catch (err) {
         resApp.status(500).send(err)
     }
+    // respond to init request 200 ok
+    resApp.status(200).send('OK')
 
     // always keep one english worker idling
     // add new workers as needed; but less than core count. if not english, dont use queue
