@@ -2,3 +2,4 @@ node_modules
 
 prod.env
 .DS_Store
+*.traineddata
