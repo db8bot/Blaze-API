@@ -58,7 +58,7 @@ app.use('/ocr', ocr)
 
 
 var port = process.env.PORT
-if (port == null || port === '' || versionSelector === 'dev') {
+if (port == null || port === '') {
     port = 8080
 }
 app.listen(port, () => {
