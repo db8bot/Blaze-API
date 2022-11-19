@@ -72,7 +72,7 @@ async function ocr(param, req) {
                 })
         }
 
-        console.log(param)
+        // console.log(param)
 
     } else {
         const worker = createWorker()
