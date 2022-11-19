@@ -20,7 +20,7 @@ router.post('/', async (req, resApp) => {
     //     lang: <String>
     //     source: <URL>
     // }
-    let redisDataInput = {
+    let dataInput = {
         auth: hash(req.body.auth),
         serverID: req.body.serverID,
         channelID: req.body.channelID,
@@ -28,12 +28,13 @@ router.post('/', async (req, resApp) => {
         jobID: req.body.jobID,
         lang: req.body.lang,
         source: req.body.source,
-        time: req.body.time
+        time: req.body.time,
+        dmUser: req.body.dmUser
     }
 
     // start OCR! - add to ocr job
     try {
-        ocr(redisDataInput, req)
+        ocr(dataInput, req)
         // respond to init request 200 ok
         resApp.status(200).send('OK')
 
@@ -60,20 +61,15 @@ async function ocr(param, req) {
         param.text = Buffer.from(data.data.text)
 
         // post back to /ocr
-        if (!process.env.POSTBACKURL.includes('localhost')) { // only post back if theres an actual url - so avoid crashing due to err
-            superagent
-                .post(`${process.env.POSTBACKURL}/ocrinbound`)
-                .set('Content-Type', 'application/x-www-form-urlencoded')
-                .send(param)
-                .end((err, res) => {
-                    if (err) {
-                        console.log(err)
-                    }
-                })
-        }
-
-        // console.log(param)
-
+        superagent
+            .post(`${process.env.POSTBACKURL}/ocrinbound`)
+            .set('Content-Type', 'application/x-www-form-urlencoded')
+            .send(param)
+            .end((err, res) => {
+                if (err) {
+                    console.log(err)
+                }
+            })
     } else {
         const worker = createWorker()
         await worker.load()
@@ -86,20 +82,15 @@ async function ocr(param, req) {
         param.text = Buffer.from(data.data.text)
 
         // post back to /ocr
-        if (!process.env.POSTBACKURL.includes('localhost')) {
-            superagent
-                .post(`${process.env.POSTBACKURL}/ocrinbound`)
-                .set('Content-Type', 'application/x-www-form-urlencoded')
-                .send(param)
-                .end((err, res) => {
-                    if (err) {
-                        console.log(err)
-                    }
-                })
-        }
-
-        console.log(param)
-
+        superagent
+            .post(`${process.env.POSTBACKURL}/ocrinbound`)
+            .set('Content-Type', 'application/x-www-form-urlencoded')
+            .send(param)
+            .end((err, res) => {
+                if (err) {
+                    console.log(err)
+                }
+            })
     }
     // console.log(data.jobId)
     // console.log(data.data.text)
