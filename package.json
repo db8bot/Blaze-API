@@ -6,7 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node index.js",
-    "build": "docker build . -t BlazeAPI-v0.0.1-dev"
+    "build": "docker build . -t blazeapi-v0.0.1-dev",
+    "buildarm": "docker buildx build . --platform linux/amd64 -t blazeapi-v0.0.1-dev"
   },
   "repository": {
     "type": "git",
