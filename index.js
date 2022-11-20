@@ -1,5 +1,3 @@
-require('dotenv').config({ path: './prod.env' })
-
 const express = require('express')
 // const superagent = require('superagent')
 const cookieParser = require('cookie-parser')

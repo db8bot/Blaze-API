@@ -5,9 +5,10 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node index.js",
+    "start": "doppler run --token=${DOPPLER_TOKEN} --command=\"node index.js\"",
     "build": "docker build . -t blazeapi-v0.0.1-dev",
-    "buildarm": "docker buildx build . --platform linux/amd64 -t blazeapi-v0.0.1-dev"
+    "buildarm": "docker buildx build . --platform linux/amd64 -t blazeapi-v0.0.1-dev",
+    "start-dev": "doppler run --command=\"node index.js\""
   },
   "repository": {
     "type": "git",
