@@ -52,7 +52,9 @@ initTesseractQuee(app)
 
 // set up routes
 const ocr = require('./routes/ocr')
+const get = require('./routes/get')
 app.use('/ocr', ocr)
+app.use('/get', get)
 
 
 var port = process.env.PORT
