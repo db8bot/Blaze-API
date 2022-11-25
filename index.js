@@ -1,5 +1,5 @@
 const express = require('express')
-// const superagent = require('superagent')
+const superagent = require('superagent')
 const cookieParser = require('cookie-parser')
 // const redis = require('redis')
 const { createWorker, createScheduler } = require('tesseract.js')
@@ -48,6 +48,16 @@ async function initTesseractQuee(app) {
     app.set('tesseractScheduler', scheduler)
 }
 initTesseractQuee(app)
+
+
+// setup universal useragent
+
+superagent
+    .get('https://omahaproxy.appspot.com/win')
+    .end((err, res) => {
+        if (err) console.error(err)
+        app.set('useragent', `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${res.text.substring(0, res.text.indexOf('.'))}.0.0.0 Safari/537.36`)
+    })
 
 
 // set up routes
