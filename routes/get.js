@@ -1,3 +1,4 @@
+// sfo as 464 seatac as 132 nov 24 22
 const express = require('express')
 const router = express.Router()
 const superagent = require('superagent')
@@ -159,8 +160,12 @@ async function shOriginalsRequest(params, selectNum, useragent) { // might not i
                 } else {
                     let $ = cheerio.load(res.text)
                     let link = $('#pdf').attr('src')
-                    if (link) resolve(link)
-                    else reject('not found')
+                    if (link) {
+                        if (!link.includes('https://') && link.includes('http://')) link = link.replace('http://', 'https://')
+                        if (!link.includes('https://') && !link.includes('http://') && link.includes('//')) link = link.replace('//', 'https://')
+                        else link = 'https://sci-hub.se' + link
+                        resolve(link)
+                    } else reject('not found')
                 }
             })
 
@@ -173,7 +178,7 @@ async function shMirrorRequest(params, useragent) {
             .get(`https://sci-hub.mksa.top/${params.source}`)
             .set('User-Agent', useragent)
             .end((err, res) => {
-                if (err) reject(err)
+                if (err) return reject(err)
                 let $ = cheerio.load(res.text)
                 try {
                     let matching = $($('#article').children('embed')[0]).attr('src') || $($('#article').children('iframe')[0]).attr('src')
@@ -196,7 +201,7 @@ async function lbRequest(metadata, useragent) {
                 .get(`http://library.lol/scimag/${metadata.doi}`)
                 .set('User-Agent', useragent)
                 .end((err, res) => {
-                    if (err) reject(err)
+                    if (err) return reject(err)
                     let $ = cheerio.load(res.text)
                     let link = $('#download').children('h2').children('a').attr('href')
                     if (link) resolve(link)
@@ -220,7 +225,7 @@ async function lbRequest(metadata, useragent) {
                             .get(getPageLink)
                             .set('User-Agent', useragent)
                             .end((err, res) => {
-                                if (err) reject(err)
+                                if (err) return reject(err)
                                 $ = cheerio.load(res.text)
                                 if (fileCount > 1) {
                                     resolve({ multi: true, multiLink: `https://libgen.is/scimag/?q=${encodeURIComponent(metadata.title)}`, link: $('#download').children('h2').children('a').attr('href') })
@@ -239,7 +244,7 @@ async function googleScholarRequest(params) {
         superagent
             .get(`https://serpapi.com/search.json?engine=google_scholar&q=${params.source}&api_key=${process.env.SERPAPIKEY}`)
             .end((err, res) => {
-                if (err) reject(err)
+                if (err) return reject(err)
                 let resultObj = res.body.organic_results[0]
                 let matching = {
                     title: resultObj.title,
@@ -261,9 +266,11 @@ async function semanticScholarReq(metadata) {
                 else {
                     let resultObj = JSON.parse(res.text)
                     if (resultObj.total > 0) {
-                        console.log(resultObj.data[0].openAccessPdf.url)
+                        let linkReturn = resultObj.data[0].openAccessPdf
+                        if (linkReturn) resolve(linkReturn.url)
+                        else reject('not found')
                     } else {
-                        console.log('not found')
+                        reject('not found')
                     }
                 }
             })
@@ -282,17 +289,19 @@ async function ssrnRequest(metadata, useragent) {
                     try {
                         var paperReqLink = $($($($($($('.description')[0]).children('h3')[0]).children('span')[0]).children('a'))[0]).attr('href')
                     } catch (err) {
-                        reject('not found')
+                        return reject('not found')
                     }
+                    if (!paperReqLink) return reject('not found')
                     superagent
                         .get(paperReqLink)
                         .end((err, res) => {
-                            if (err) reject(err)
+                            if (err) reject('ssrn error')
                             else {
                                 $ = cheerio.load(res.text)
                                 try {
                                     let deliveryLink = $($($($('.abstract-buttons')[0]).children('div')[0]).children('a')[0]).attr('href')
-                                    resolve(`https://papers.ssrn.com/sol3/${deliveryLink}`)
+                                    if (deliveryLink) resolve(`https://papers.ssrn.com/sol3/${deliveryLink}`)
+                                    else reject('not found')
                                 } catch (err) {
                                     reject('not found')
                                 }
