@@ -100,12 +100,12 @@ router.post('/', async (req, resApp) => {
     }
     if (result) {
         // post back to /ocrinbound
-        await postback(true, dataInput, result, metadata)
         // console.log([dataInput, result, metadata])
         // console.log(metadata.authors)
+        await postback(true, dataInput, result, metadata)
     } else {
         // postback - not found
-        await postback(false)
+        await postback(false, dataInput)
         // console.log('not found')
     }
 
@@ -137,7 +137,7 @@ async function resolveMetadata(params) {
                         issue: null,
                         issuedYear: null,
                         volume: null,
-                        authors: ''
+                        authors: []
                     })
                 } catch (err) {
                     resolve({ // if no metadata found, return empty object
@@ -147,7 +147,7 @@ async function resolveMetadata(params) {
                         issue: null,
                         issuedYear: null,
                         volume: null,
-                        authors: ''
+                        authors: []
                     })
                 }
             })
@@ -232,6 +232,7 @@ async function lbRequest(metadata, useragent) {
                     else reject('not found')
                 })
         } else {
+            if (!metadata.title) reject('not found')
             superagent
                 .get(`https://libgen.is/scimag/?q=${encodeURIComponent(metadata.title)}`)
                 .set('User-Agent', useragent)
@@ -266,24 +267,30 @@ async function lbRequest(metadata, useragent) {
 async function googleScholarRequest(params) {
     return new Promise((resolve, reject) => {
         superagent
-            .get(`https://serpapi.com/search.json?engine=google_scholar&q=${params.source}&api_key=${process.env.SERPAPIKEY}`)
+            .get(`https://serpapi.com/search.json?engine=google_scholar&q=${encodeURIComponent(params.source)}&api_key=${process.env.SERPAPIKEY}`)
             .end((err, res) => {
                 if (err) return reject(err)
-                let resultObj = res.body.organic_results[0]
-                let matchingLink = resultObj.resources
-                let matching = {
-                    title: resultObj.title,
-                    doi: resultObj.doi,
-                    link: matchingLink ? matchingLink[0].url : null
+                if (res.body.error === `Google hasn't returned any results for this query.`) reject('not found')
+                try {
+                    let resultObj = res.body.organic_results[0]
+                    let matchingLink = resultObj.resources
+                    let matching = {
+                        title: resultObj.title,
+                        doi: (resultObj.doi) ? resultObj.doi : null,
+                        link: matchingLink ? matchingLink[0].link : null
+                    }
+                    if (matching.link) resolve(matching)
+                    else reject('Google Scholar error')
+                } catch (err) {
+                    reject('Google Scholar error')
                 }
-                if (matching.link) resolve(matching)
-                else reject('Google Scholar error')
             })
     })
 }
 
 async function semanticScholarReq(metadata) {
     return new Promise((resolve, reject) => {
+        if (!metadata.title) reject('not found')
         superagent
             .get(`http://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(metadata.title)}&fields=openAccessPdf,title&limit=5`)
             .end((err, res) => {
@@ -304,6 +311,7 @@ async function semanticScholarReq(metadata) {
 
 async function ssrnRequest(metadata, useragent) {
     return new Promise((resolve, reject) => {
+        if (!metadata.title) reject('not found')
         superagent
             .get(`https://papers.ssrn.com/sol3/results.cfm?txtKey_Words=${encodeURIComponent(metadata.title)}`)
             .set('User-Agent', useragent)
@@ -351,6 +359,8 @@ async function postback(found, dataInput, params, metadata) {
                     resolve()
                 })
         } else {
+            // console.log('not found')
+            // console.log([dataInput, 'not found'])
             superagent
                 .post(`${process.env.POSTBACKURL}/getinbound`)
                 .set('Content-Type', 'application/x-www-form-urlencoded')
