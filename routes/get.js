@@ -21,6 +21,9 @@ router.post('/', async (req, resApp) => {
         serverID: req.body.serverID,
         channelID: req.body.channelID,
         memberID: req.body.memberID,
+        dmUser: req.body.dmUser,
+        time: req.body.time,
+        tag: req.body.tag,
         jobID: req.body.jobID,
         source: req.body.source, // doi or title
     }
@@ -30,9 +33,9 @@ router.post('/', async (req, resApp) => {
 
     /*
     pathway: highest probability to lowest
-        1.  scihub
-        1.1 scihub mirrors?
-        2. libgen
+        1.  sh
+        1.1 sh mirror
+        2. lbg
         3. google scholar
         4. prepub mirrors
     */
@@ -55,15 +58,13 @@ router.post('/', async (req, resApp) => {
         }
     }
     // if no success, try next in pathway
-    console.log(result)
-    console.log(metadata)
     if (!result) {
 
         //2. scihub mksa.top
         try {
             result = { type: 'shMirror', multiLink: null, link: await shMirrorRequest(dataInput, useragent) }
         } catch (err) {
-            console.log('scihub mksa.top err')
+            console.log('sh mksa.top err')
 
             // 3. libgen
             try {
@@ -74,7 +75,7 @@ router.post('/', async (req, resApp) => {
                     result = { type: 'lb', multiLink: lbResult.multiLink, link: lbResult.link }
                 }
             } catch (err) {
-                console.log('libgen err')
+                console.log('lg err')
 
                 // 4. prepub servers
                 try {
@@ -88,7 +89,7 @@ router.post('/', async (req, resApp) => {
                         console.error('prepubSSRN err')
                         // 5. google scholar
                         try {
-                            // result = { type: 'gs', multiLink: null, link: (await googleScholarRequest(dataInput)).link }
+                            result = { type: 'gs', multiLink: null, link: (await googleScholarRequest(dataInput)).link }
                         } catch (err) {
                             console.error('google scholar err')
                         }
@@ -98,11 +99,14 @@ router.post('/', async (req, resApp) => {
         }
     }
     if (result) {
-        // postback - with result
-        console.log(result)
+        // post back to /ocrinbound
+        await postback(true, dataInput, result, metadata)
+        // console.log([dataInput, result, metadata])
+        // console.log(metadata.authors)
     } else {
         // postback - not found
-        console.log('not found')
+        await postback(false)
+        // console.log('not found')
     }
 
 })
@@ -111,7 +115,7 @@ router.post('/', async (req, resApp) => {
 async function resolveMetadata(params) {
     return new Promise((resolve, reject) => {
         superagent
-            .get(`https://www.mybib.com/api/autocite/search?q=${params.source}&sourceId=${params.source.match(/https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/gi) ? 'webpage' : 'article_journal'}`) // regex match if url
+            .get(`https://www.mybib.com/api/autocite/search?q=${encodeURIComponent(params.source)}&sourceId=${params.source.match(/https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/gi) ? 'webpage' : 'article_journal'}`) // regex match if url
             .end((err, res) => {
                 if (err) reject(err)
                 let resultObj = (JSON.parse(res.text)).results[0].metadata
@@ -163,7 +167,7 @@ async function shOriginalsRequest(params, selectNum, useragent) { // might not i
                     if (link) {
                         if (!link.includes('https://') && link.includes('http://')) link = link.replace('http://', 'https://')
                         if (!link.includes('https://') && !link.includes('http://') && link.includes('//')) link = link.replace('//', 'https://')
-                        else link = 'https://sci-hub.se' + link
+                        else link = shMirrors[selectNum] + link
                         resolve(link)
                     } else reject('not found')
                 }
@@ -194,7 +198,7 @@ async function shMirrorRequest(params, useragent) {
 
 async function lbRequest(metadata, useragent) {
     return new Promise((resolve, reject) => {
-        // if has doi, go to lib.lol, otherwise get libgen.is
+        // if has doi, go to lib.lol, otherwise get search page
 
         if (metadata.doi) {
             superagent
@@ -246,13 +250,14 @@ async function googleScholarRequest(params) {
             .end((err, res) => {
                 if (err) return reject(err)
                 let resultObj = res.body.organic_results[0]
+                let matchingLink = resultObj.resources
                 let matching = {
                     title: resultObj.title,
                     doi: resultObj.doi,
-                    link: resultObj.resources[0].link
+                    link: matchingLink ? matchingLink[0].url : null
                 }
-                if (matching) resolve(matching)
-                else reject('Google Scholar API error')
+                if (matching.link) resolve(matching)
+                else reject('Google Scholar error')
             })
     })
 }
@@ -312,20 +317,31 @@ async function ssrnRequest(metadata, useragent) {
     })
 }
 
-async function postback(params) {
+async function postback(found, dataInput, params, metadata) {
     return new Promise((resolve, reject) => {
-
-        superagent
-            .post(`${process.env.POSTBACKURL}/getinbound`)
-            .set('Content-Type', 'application/x-www-form-urlencoded')
-            .send(param)
-            .end((err, res) => {
-                if (err) {
-                    reject(err)
-                }
-                resolve()
-            })
-
+        if (found) {
+            superagent
+                .post(`${process.env.POSTBACKURL}/getinbound`)
+                .set('Content-Type', 'application/x-www-form-urlencoded')
+                .send([dataInput, params, metadata])
+                .end((err, res) => {
+                    if (err) {
+                        reject(err)
+                    }
+                    resolve()
+                })
+        } else {
+            superagent
+                .post(`${process.env.POSTBACKURL}/getinbound`)
+                .set('Content-Type', 'application/x-www-form-urlencoded')
+                .send([dataInput, 'not found'])
+                .end((err, res) => {
+                    if (err) {
+                        reject(err)
+                    }
+                    resolve()
+                })
+        }
     })
 }
 
