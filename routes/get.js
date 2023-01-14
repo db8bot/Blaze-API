@@ -118,18 +118,38 @@ async function resolveMetadata(params) {
             .get(`https://www.mybib.com/api/autocite/search?q=${encodeURIComponent(params.source)}&sourceId=${params.source.match(/https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/gi) ? 'webpage' : 'article_journal'}`) // regex match if url
             .end((err, res) => {
                 if (err) reject(err)
-                let resultObj = (JSON.parse(res.text)).results[0].metadata
-                let metadata = {
-                    title: resultObj.title,
-                    containerTitle: resultObj.containerTitle,
-                    doi: resultObj.doi,
-                    issue: resultObj.issue,
-                    issuedYear: resultObj.issued.month,
-                    volume: resultObj.volume,
-                    authors: resultObj.author
+                try {
+                    let resultObj = (JSON.parse(res.text)).results[0].metadata
+                    let metadata = {
+                        title: resultObj.title,
+                        containerTitle: resultObj.containerTitle,
+                        doi: resultObj.doi,
+                        issue: resultObj.issue,
+                        issuedYear: resultObj.issued.month,
+                        volume: resultObj.volume,
+                        authors: resultObj.author
+                    }
+                    if (metadata) resolve(metadata)
+                    else resolve({ // if parse err, return empty object
+                        title: null,
+                        containerTitle: null,
+                        doi: null,
+                        issue: null,
+                        issuedYear: null,
+                        volume: null,
+                        authors: ''
+                    })
+                } catch (err) {
+                    resolve({ // if no metadata found, return empty object
+                        title: null,
+                        containerTitle: null,
+                        doi: null,
+                        issue: null,
+                        issuedYear: null,
+                        volume: null,
+                        authors: ''
+                    })
                 }
-                if (metadata) resolve(metadata)
-                else reject('metadata json parse error')
             })
 
     })
