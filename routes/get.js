@@ -186,7 +186,7 @@ async function shOriginalsRequest(params, selectNum, useragent) { // might not i
                     let link = $('#pdf').attr('src')
                     if (link) {
                         if (!link.includes('https://') && link.includes('http://')) link = link.replace('http://', 'https://')
-                        if (!link.includes('https://') && !link.includes('http://') && link.includes('//')) link = link.replace('//', 'https://')
+                        if (!link.includes('https://') && !link.includes('http://') && (link.substring(0, 2)).includes('//')) link = link.replace('//', 'https://') // substr to account for /downloads/2019-01-19https://1a/jambeck2015.pdf#navpanes=0&view=FitH
                         else link = shMirrors[selectNum] + link
                         resolve(link)
                     } else reject('not found')
