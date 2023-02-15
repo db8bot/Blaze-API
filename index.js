@@ -63,9 +63,10 @@ superagent
 // set up routes
 const ocr = require('./routes/ocr')
 const get = require('./routes/get')
+const heartbeat = require('./routes/heartbeat')
 app.use('/ocr', ocr)
 app.use('/get', get)
-
+app.use('/heartbeat', heartbeat)
 
 var port = process.env.PORT
 if (port == null || port === '') {
