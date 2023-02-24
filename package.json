@@ -1,13 +1,13 @@
 {
   "name": "db8bot_scihub_api",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Readme coming. See desc for now.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "doppler run --token=${DOPPLER_TOKEN} --command=\"node index.js\"",
-    "build": "docker build . -t blazeapi-v1.0.3-prod",
-    "buildarm": "docker buildx build . --platform linux/amd64 -t blazeapi-v1.0.3-prod",
+    "build": "docker build . -t blazeapi-v1.0.4-prod",
+    "buildarm": "docker buildx build . --platform linux/amd64 -t blazeapi-v1.0.4-prod",
     "start-dev": "doppler run --command=\"node index.js\""
   },
   "repository": {
