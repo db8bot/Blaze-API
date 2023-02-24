@@ -1,4 +1,0 @@
-name = "db8bot-scihub-api"
-main = "src/index.ts"
-compatibility_date = "2022-06-07"
-node_compat = true
