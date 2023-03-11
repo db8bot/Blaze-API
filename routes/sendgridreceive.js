@@ -1,3 +1,4 @@
+// I'll Be There - WOTE + Vance Joy - thx for helping me survive this 16 hr marathon from designing to deployment
 const express = require('express')
 const router = express.Router()
 const multer = require('multer')
@@ -10,7 +11,7 @@ const superagent = require('superagent')
 
 async function byeProcessing(msg) {
 
-    let byeTeam = msg.body.replace('BYE', '').trim().replace(/\n/g, '').replace(/\t/g, '')
+    let byeTeam = msg.text.replace('BYE', '').trim().replace(/\n/g, '').replace(/\t/g, '')
 
     let returnData = { // follow standard schema
         subject: msg.subject,
@@ -35,17 +36,24 @@ async function byeProcessing(msg) {
 async function defaultProcessing(msg) {
 
     // competitor processing
-    let competitionTeamsStr = msg.text.substring(0, msg.toLowerCase().indexOf('judging:')).replace(/\n/gmi, ' ').replace(/\r/gmi, ' ').trim() // tabromm doesnt use \r whereas gmail does. the \r replace is for when its from gmail (testing), \n is for prod
+    let competitionTeamsStr = msg.text.substring(0, msg.text.toLowerCase().indexOf('judging:')).replace(/\n/gmi, ' ').replace(/\r/gmi, ' ').trim() // tabromm doesnt use \r whereas gmail does. the \r replace is for when its from gmail (testing), \n is for prod
 
     // competitor processing: side lock and flip processing
-    var sidelock
+    var sidelock = false
     if (competitionTeamsStr.toLowerCase().includes('side locked')) {
+        competitionTeamsStr = competitionTeamsStr.replace('Side locked', '').trim()
         sidelock = true
     }
-    var flip
+    var flip = false
     if (competitionTeamsStr.toLowerCase().includes('(flip)')) {
+        competitionTeamsStr = competitionTeamsStr.replace('(Flip)', '').trim()
         flip = true
     }
+
+    // get rid of double spaces between words
+    competitionTeamsStr = competitionTeamsStr.split(' ')
+    competitionTeamsStr = competitionTeamsStr.filter(x => x)
+    competitionTeamsStr = competitionTeamsStr.join(' ')
 
     let combinedTeamsArr = competitionTeamsStr.split('vs.')
     if (!flip) { // no flip - this means each team has assigned "aff/neg" or "pro/con" sides - these need to be trimmed
@@ -68,14 +76,20 @@ async function defaultProcessing(msg) {
     msg.text = msg.text.replace(msg.text.substring(0, msg.text.indexOf('Judging:')), '')
 
     // judges processing
-    let judges = msg.text.match(/(?<=judging:)[\s\S]*(?=start)/gmi)[0].split('\n')
+    var judges
+    if (msg.text.toLowerCase().includes('flt') || msg.text.toLowerCase().includes('flight')) { // cut off on flight start
+        judges = msg.text.match(/(?<=judging:)[\s\S]*?(?=(flt|flight))/gmiu)[0].split('\n')
+    } else { // otherwise go until start of "start"
+        judges = msg.text.match(/(?<=judging:)[\s\S]*?(?=start)/gmiu)[0].split('\n')
+    }
     judges = judges.map(x => x.replace(/\r/gmi, '').trim())
     judges = judges.filter(x => x) // res: array of judges, len = 1 for 1 judge
 
     msg.text = msg.text.replace(msg.text.substring(0, msg.text.indexOf(judges[judges.length - 1]) + judges[judges.length - 1].length), '')
 
+
     // start time
-    var start = msg.text.match(/((.|\n)*)(?=room:)/gmi)[0]
+    var start = msg.text.match(/((.|(\r|\n))*)(?=room:)/gmiu)[0] // match \r or \n so it works in testing w/ gmail & in prod w/ just \n from tab
     // start time flight processing
     if (start.toLowerCase().includes('flt') || start.toLowerCase().includes('flight')) {
         var flightNum = start.match(/(?<=(flt|flight)) [0-9][\s|s]*(?=start)/gmi)[0].trim()
@@ -90,7 +104,7 @@ async function defaultProcessing(msg) {
     // rooms
     var room
     if (msg.text.toLowerCase().includes('message: ')) { // text includes message: to hook to
-        room = msg.text.match(/(?<=room:)[\s\S]*(?=message:)/gmi)[0].replace(/\n/gmi, '').replace(/\r/gmi, '').trim()
+        room = msg.text.match(/(?<=room:)[\s\S]*?(?=message:)/gmiu)[0].replace(/\n/gmi, '').replace(/\r/gmi, '').trim()
         msg.text = msg.text.replace(`Room: ${room}`, '')
     } else if (msg.text.toLowerCase().includes('pronouns: ') && !msg.text.toLowerCase().includes('message: ')) { // text includes pronouns to hook to
         // match everything until the start of the line containing the word "pronoun"
@@ -107,16 +121,15 @@ async function defaultProcessing(msg) {
     var messages
     if (msg.text.toLowerCase().includes('message: ') || msg.text.toLowerCase().includes('pronouns: ')) {
         if (msg.text.toLowerCase().includes('map: ')) {
-            messages = msg.text.match(/((.|\n)*)(?=map:)/gmi)[0].replace('Message: ', '').replace(/\n/g, '').replace(/\r/g, '').trim()
-            msg.text = msg.text.replace(msg.text.match(/((.|\n)*)(?=map:)/gmi)[0], '')
+            messages = msg.text.match(/((.|(\r|\n))*)(?=map:)/gmiu)[0].replace('Message: ', '').replace(/\r/g, '').trim() // keep \n cause msgs have multi lines
+            msg.text = msg.text.replace(msg.text.match(/((.|(\r|\n))*)(?=map:)/gmiu)[0], '')
         } else { // no map - match to end
-            messages = msg.text.replace('Message: ', '').replace(/\n/g, '').replace(/\r/g, '').trim()
+            messages = msg.text.replace('Message: ', '').replace(/\r/g, '').trim()
         }
     }
 
     // map
-
-    var map
+    var map = null
     if (msg.text.toLowerCase().includes('map: ')) {
         map = msg.text.replace('Map: ', '').replace(/\n/g, '').replace(/\r/g, '').trim()
     }
@@ -134,7 +147,7 @@ async function defaultProcessing(msg) {
         competitionTeamsStr: competitionTeamsStr,
         judging: judges,
         start: start,
-        flight: flightNum,
+        flight: flightNum || false,
         room: room,
         extraInfo: messages,
         map: map
@@ -175,7 +188,7 @@ router.post('/', upload.any(), async (req, resApp) => {
         let msg = {
             subject: req.body.subject,
             date: new Date(req.body.headers.match(/Date: .+?(?=\n)/gmi)[0].trim().replace('Date: ', '')),
-            body: req.body.text,
+            text: req.body.text,
         }
 
         /* 
@@ -203,7 +216,7 @@ router.post('/', upload.any(), async (req, resApp) => {
         }
         */
 
-        if (msg.body.includes('BYE')) {
+        if (msg.text.includes('BYE')) {
 
             let byeProcessingData = await byeProcessing(msg)
 
