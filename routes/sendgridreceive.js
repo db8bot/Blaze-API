@@ -237,7 +237,8 @@ router.post('/', upload.any(), async (req, resApp) => {
                 let unifiedReturn = {
                     ...byeProcessingData,
                     notify: byeDBQuery[0].notify,
-                    tournName: byeDBQuery[0].tournName
+                    tournName: byeDBQuery[0].tournName,
+                    auth: process.env.AUTH
                 }
                 await postback(unifiedReturn)
                 // console.log(unifiedReturn)
@@ -272,7 +273,8 @@ router.post('/', upload.any(), async (req, resApp) => {
                 let unifiedReturn = {
                     ...defaultProcessingData,
                     notify: dbQuery1[0].notify,
-                    tournName: dbQuery1[0].tournName
+                    tournName: dbQuery1[0].tournName,
+                    auth: process.env.AUTH
                 }
                 await postback(unifiedReturn)
                 // console.log(unifiedReturn)
@@ -282,7 +284,8 @@ router.post('/', upload.any(), async (req, resApp) => {
                 let unifiedReturn = {
                     ...defaultProcessingData,
                     notify: dbQuery2[0].notify,
-                    tournName: dbQuery2[0].tournName
+                    tournName: dbQuery2[0].tournName,
+                    auth: process.env.AUTH
                 }
                 await postback(unifiedReturn)
                 // console.log(unifiedReturn)
