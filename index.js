@@ -65,7 +65,6 @@ app.use('/ocr', require('./routes/ocr'))
 app.use('/get', require('./routes/get'))
 app.use('/heartbeat', require('./routes/heartbeat'))
 app.use('/sendgridreceive', require('./routes/sendgridreceive'))
-// app.use('/sendgridreceive', require('./routes/sendgridreceiveold'))
 
 var port = process.env.PORT
 if (port == null || port === '') {

@@ -30,7 +30,7 @@ async function byeProcessing(msg) {
         map: null
     }
 
-    return (returnData)
+    return returnData
 }
 
 async function defaultProcessing(msg) {
@@ -215,7 +215,7 @@ router.post('/', upload.any(), async (req, resApp) => {
             tourn name - footer      
         }
         */
-
+        console.log('received!')
         if (msg.text.includes('BYE')) {
 
             let byeProcessingData = await byeProcessing(msg)
@@ -235,18 +235,60 @@ router.post('/', upload.any(), async (req, resApp) => {
             if (byeDBQuery.length > 0) { // find server, find channel, send message - team exists!
                 console.log(`team name found in db!`)
                 let unifiedReturn = {
-                    ...returnData,
+                    ...byeProcessingData,
                     notify: byeDBQuery[0].notify,
                     tournName: byeDBQuery[0].tournName
                 }
                 await postback(unifiedReturn)
+                // console.log(unifiedReturn)
             }
 
-        }
-        // else if () { // diff: "normal processing" , default need handle multi judge panels | side locked | (flip)
-        // }
-        else {
-            console.log(await defaultProcessing(msg))
+        } else {
+            let defaultProcessingData = await defaultProcessing(msg)
+
+            var dbQuery1 = await collection.find({
+                trackedTeamCode: defaultProcessingData.searchTeam1,
+                tournStart: {
+                    $lte: msg.date.getTime()
+                },
+                tournEnd: {
+                    $gte: msg.date.getTime()
+                }
+            }).toArray() // [tourn start]---<email date>---[tourn end]
+
+            var dbQuery2 = await collection.find({
+                trackedTeamCode: defaultProcessingData.searchTeam2,
+                tournStart: {
+                    $lte: msg.date.getTime()
+                },
+                tournEnd: {
+                    $gte: msg.date.getTime()
+                }
+            }).toArray() // [tourn start]---<email date>---[tourn end]
+
+            if (dbQuery1.length > 0) {
+                // find server, find channel, send message
+                // console.log(`${searchString[0]} found in db`)
+                let unifiedReturn = {
+                    ...defaultProcessingData,
+                    notify: dbQuery1[0].notify,
+                    tournName: dbQuery1[0].tournName
+                }
+                await postback(unifiedReturn)
+                // console.log(unifiedReturn)
+            }
+            if (dbQuery2.length > 0) {
+                // console.log(`${searchString[1]} found in db`)
+                let unifiedReturn = {
+                    ...defaultProcessingData,
+                    notify: dbQuery2[0].notify,
+                    tournName: dbQuery2[0].tournName
+                }
+                await postback(unifiedReturn)
+                // console.log(unifiedReturn)
+            }
+
+            // console.log(await defaultProcessing(msg))
         }
     }
 })
