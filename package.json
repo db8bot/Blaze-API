@@ -1,7 +1,7 @@
 {
-  "name": "db8bot_scihub_api",
+  "name": "blaze-api",
   "version": "1.1.6",
-  "description": "Readme coming. See desc for now.",
+  "description": "General service API for db8bot to handle high intensity workloads such as web scraping & OCR",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
