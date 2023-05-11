@@ -1,5 +1,5 @@
 # Blaze-API
-General service API for db8bot to handle high intensity workloads such as web scraping & OCR
+General service API for db8bot to handle high intensity workloads such as web scraping, research journal requests & OCR
 
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fdb8bot%2FBlaze-API.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fdb8bot%2FBlaze-API?ref=badge_large)
 
